@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Conquest of Sengo — Session</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .session-hero { text-align:center; padding: clamp(24px,4vw,48px); }
+  .session-hero h1 { margin:0 0 .25rem; font-size: clamp(28px,5vw,48px); color:#ffcb05; text-shadow:3px 3px #2a75bb; }
+  .session-hero p { color:#6d84b6; }
+
+  .player-grid {
+    display:grid; gap:20px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    padding: clamp(16px,4vw,32px);
+  }
+  .player-card {
+    background:#1a2031; border:2px solid #2a75bb; border-radius:16px; color:#fff;
+    overflow:hidden; display:grid; grid-template-rows: 180px auto;
+    transition:.18s transform, .18s border-color, .18s box-shadow;
+  }
+  .player-card:hover { transform: translateY(-4px); border-color:#3c8ee6; box-shadow:0 10px 24px rgba(0,0,0,.25); }
+
+  .thumb-wrap { position:relative; background:#11192a; }
+  .player-thumb {
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .edit-pic {
+    position:absolute; right:10px; bottom:10px;
+    background:#2a75bb; border:1px solid #1a4c86; color:#fff; font-weight:700;
+    padding:6px 10px; border-radius:10px; cursor:pointer;
+  }
+
+  .player-body { padding:12px 14px; display:grid; gap:6px; }
+  .player-name { margin:0; font-weight:700; color:#ffcb05; text-shadow:1px 1px #244d87; }
+  .player-meta { color:#cfe1ff; opacity:.95; margin:0; }
+
+  .actions { margin-top:6px; display:flex; gap:8px; }
+  .btn {
+    border:2px solid #2a75bb; background:#2a75bb; color:#fff; font-weight:700;
+    border-radius:12px; padding:8px 12px; text-decoration:none;
+  }
+  .btn.secondary { background:transparent; }
+  .add-slot {
+    display:grid; place-items:center; border:2px dashed #2a75bb; border-radius:16px; color:#bcd2ff; background:#0f1526;
+    min-height:260px;
+  }
+  .add-slot .plus { font-size:2rem; color:#2a75bb; }
+</style>
+</head>
+<body>
+  <section class="session-hero">
+    <h1>Conquest of Sengo — Session</h1>
+    <p>Tap a trainer’s picture to set it, or manage their team.</p>
+  </section>
+
+  <main class="player-grid" id="playerGrid"></main>
+
+<script>
+/* ---- Players for this session ---- */
+const players = [
+  { id:"p-alex",  name:"Alex Rivers",  role:"Trainer", portrait:"assets/players/alex.jpg" },
+  // Add more later…
+];
+
+/* ---- Keys ---- */
+const iconKey = (pid) => `sengo:trainerIcon:${pid}`;
+
+/* ---- Render ---- */
+const grid = document.getElementById('playerGrid');
+
+function render() {
+  grid.innerHTML = players.map(p => {
+    const custom = localStorage.getItem(iconKey(p.id));
+    const src = custom || p.portrait || 'assets/players/_placeholder.jpg';
+    const safeName = escapeHtml(p.name);
+    return `
+      <article class="player-card" data-id="${p.id}">
+        <div class="thumb-wrap">
+          <img class="player-thumb" src="${src}" alt="${safeName} portrait" onerror="this.src='assets/players/_placeholder.jpg'">
+          <button class="edit-pic" data-action="change-pic" data-id="${p.id}">Change picture</button>
+          <input type="file" accept="image/*" hidden id="file-${p.id}" data-action="file-input" data-id="${p.id}">
+        </div>
+        <div class="player-body">
+          <h3 class="player-name">${safeName}</h3>
+          <p class="player-meta">${p.role} · Click picture to update</p>
+          <div class="actions">
+            <a class="btn" href="team-editor.html?player=${encodeURIComponent(p.id)}">Manage team</a>
+            <button class="btn secondary" data-action="reset-pic" data-id="${p.id}">Reset pic</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('') + `
+    <div class="add-slot">
+      <div class="plus">+</div>
+      <div>Add player (coming soon)</div>
+    </div>
+  `;
+}
+render();
+
+/* ---- Interaction ---- */
+grid.addEventListener('click', (e) => {
+  // change picture button *or* clicking the image itself
+  if (e.target.matches('[data-action="change-pic"], .player-thumb')) {
+    const card = e.target.closest('.player-card');
+    const pid = card.dataset.id;
+    grid.querySelector(`#file-${CSS.escape(pid)}`).click();
+  }
+  if (e.target.matches('[data-action="reset-pic"]')) {
+    const pid = e.target.getAttribute('data-id');
+    localStorage.removeItem(iconKey(pid));
+    render();
+  }
+});
+
+grid.addEventListener('change', async (e) => {
+  if (!e.target.matches('[data-action="file-input"]')) return;
+  const pid = e.target.getAttribute('data-id');
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const dataURL = await fileToDataURLResized(file, 256);
+    localStorage.setItem(iconKey(pid), dataURL);
+    render();
+  } catch {
+    alert('Could not process image. Try a different file.');
+  } finally {
+    e.target.value = ''; // allow re-uploading same file later
+  }
+});
+
+/* ---- Helpers ---- */
+function fileToDataURLResized(file, size = 256) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const ratio = Math.max(size / img.width, size / img.height);
+        const nw = img.width * ratio, nh = img.height * ratio;
+        const dx = (size - nw) / 2, dy = (size - nh) / 2;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, dx, dy, nw, nh);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = fr.result;
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(s="") {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+</script>
+</body>
+</html>
