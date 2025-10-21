@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>
+  if (localStorage.getItem("auth") !== "true") {
+    window.location.href = "login.html"; // redirect to login if not logged in
+  }
+</script>
+
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Sengo Team Editor</title>

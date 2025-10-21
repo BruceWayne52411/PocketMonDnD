@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <title>Document</title>
+    <script>
+  if (localStorage.getItem("auth") !== "true") {
+    window.location.href = "login.html"; // redirect to login if not logged in
+  }
+</script>
+
 </head>
 <body>
     <section id="campaigns" class="landing poke-map">
