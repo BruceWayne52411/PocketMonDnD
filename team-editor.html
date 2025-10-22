@@ -467,11 +467,14 @@ const blankMon = () => ({
           </label>
 
           <label>
-            <span>Range</span>
-            <input type="number" min="1" step="1" data-field="move-range" value="${range}">
-            <span>Range Effects</span>
-<input type="text" data-field="move-range-effect" value="${escapeHtml(effects)}" placeholder="e.g. pushes target back 1 tile">
-          </label>
+  <span>Range</span>
+  <input 
+    type="text" 
+    data-field="move-range" 
+    value="${escapeHtml(range)}" 
+    placeholder="e.g. 3 or cone 2">
+</label>
+
 
           <label class="row-align">
             <input type="checkbox" data-field="move-opp" ${opp ? "checked" : ""}>
@@ -748,7 +751,9 @@ function viewWithAutofill(mon) {
     case "move-cat":   mv.cat   = String(e.target.value || "physical").toLowerCase(); break;
     case "move-power": mv.power = Math.max(0, Math.round(+e.target.value || 0)); e.target.value = mv.power; break;
     case "move-acc":   mv.acc   = Math.max(1, Math.min(100, Math.round(+e.target.value || 100))); e.target.value = mv.acc; break;
-    case "move-range": mv.range = Math.max(1, Math.round(+e.target.value || 1)); e.target.value = mv.range; break;
+case "move-range":
+  mv.range = e.target.value; // keep as string
+  break;
     case "move-opp":   mv.opp   = e.target.checked; break;
     case "move-pri": mv.pri = e.target.checked; break;
     case "move-effects": mv.effects = e.target.value; break;
