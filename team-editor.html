@@ -287,65 +287,67 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
     }
 
     /** ---- Data model ---- */
-    const blankMon = () => ({
-      name: "", level: 1,
-      species: "", types: [], ability: "",
-      shiny: { rolled: false, roll: null },
-      base: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
-      movesMeta: [],
-      abilities: [""],
-      moves: [""]
-    });
+    // REPLACE your current blankMon with this:
+const blankMon = () => ({
+  name: "",
+  level: 1,
+  species: "",
+  types: [],          // none
+  shiny: { rolled: false, roll: null },
+  base: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0, range: 1 },
+  abilities: [],      // ← no empty chip by default
+  moves: [],          // ← no blank move rows
+  movesMeta: []
+});
+
 
     function normalizeMon(mon) {
-      const m = mon || {};
-      const toNum = (v, d = 0) => Number.isFinite(+v) ? +v : d;
-      const base = m.base || {};
+  const m = mon || {};
+  const toNum = (v, d=0) => isFinite(+v) ? +v : d;
+  const base = m.base || {};
 
-      // Back-compat: coerce old shape {rolled,roll} to boolean
-      let shinyBool;
-      if (typeof m.shiny === "boolean") {
-        shinyBool = m.shiny;
-      } else if (m.shiny && typeof m.shiny === "object") {
-        // Treat any previously "rolled shiny" as shiny = true
-        // If you want stricter logic, change the condition.
-        shinyBool = !!m.shiny.rolled && (m.shiny.roll === 1 || m.shiny.roll === true);
-      } else {
-        shinyBool = false;
+  return {
+    name: m.name ?? "",
+    level: clamp(toNum(m.level, 1), 1, 1000),
+    species: (m.species || "").toLowerCase(),
+    types: Array.isArray(m.types) ? m.types.map(s => String(s||"").toLowerCase()).filter(Boolean) : [],
+    ability: String(m.ability || ""),
+    shiny: !!m.shiny,
+
+    base: {
+      hp: toNum(base.hp, 0),
+      atk: toNum(base.atk, 0),
+      def: toNum(base.def, 0),
+      spa: toNum(base.spa, 0),
+      spd: toNum(base.spd, 0),
+      spe: toNum(base.spe, 0),
+    },
+
+    // ✅ Ensure moves are always full objects
+    moves: Array.isArray(m.moves) ? m.moves.map(x => {
+      if (typeof x === "string") {
+        return { name: x, type:"", cat:"physical", power:0, acc:100, range:1, opp:false, pri:false, effects:"" };
       }
-
       return {
-        name: m.name ?? "",
-        level: clamp(toNum(m.level, 1), 1, 1000),
-        species: (m.species || "").toLowerCase(),
-        types: Array.isArray(m.types) ? m.types.map(s => String(s || "").toLowerCase()).filter(Boolean) : [],
-        ability: String(m.ability || ""),
-        shiny: !!shinyBool,  // <-- boolean now
-        base: {
-          hp: toNum(base.hp, 0),
-          atk: toNum(base.atk, 0),
-          def: toNum(base.def, 0),
-          spa: toNum(base.spa, 0),
-          spd: toNum(base.spd, 0),
-          spe: toNum(base.spe, 0),
-        },
-        movesMeta: Array.isArray(m.movesMeta) ? m.movesMeta.map(x => ({
-          name: String(x?.name || ""),
-          type: String(x?.type || "").toLowerCase(),
-          power: toNum(x?.power, 0),
-          acc: toNum(x?.acc, 100),
-          effects: String(x?.effects || ""),
-          opportunity: !!x?.opportunity,
-        })) : [],
-        abilities: Array.isArray(m.abilities)
-          ? m.abilities.map(a => (typeof a === "string" ? { name: a, desc: "" } : {
-            name: String(a?.name || ""),
-            desc: String(a?.desc || "")
-          }))
-          : [],
-        moves: Array.isArray(m.moves) ? m.moves.map(String) : [""],
+        name: String(x?.name || ""),
+        type: String(x?.type || ""),
+        cat: String(x?.cat || "physical"),
+        power: toNum(x?.power, 0),
+        acc: toNum(x?.acc, 100),
+        range: toNum(x?.range, 1),
+        opp: !!x?.opp,
+        pri: !!x?.pri,
+        effects: String(x?.effects || "")
       };
-    }
+    }) : [],
+
+    abilities: Array.isArray(m.abilities) ? m.abilities.map(ab => {
+      if (typeof ab === "string") return { name: ab, desc: "" };
+      return { name: String(ab?.name || ""), desc: String(ab?.desc || "") };
+    }) : []
+  };
+}
+
 
 
     /** ---- Storage ---- */
@@ -471,9 +473,12 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
 
           <label class="row-align">
             <input type="checkbox" data-field="move-opp" ${opp ? "checked" : ""}>
-            <span>Opportunity Attack / Priority</span>
+            <span>Opportunity Attack</span>
           </label>
-
+          <label class="row-align">
+            <input type="checkbox" data-field="move-pri" ${opp ? "checked" : ""}>
+            <span>Priority Attack</span>
+          </label>
           <label class="span-2">
             <span>Extra Effects</span>
             <textarea data-field="move-effects" rows="2" placeholder="Paralyzes on hit; push 1 tile, etc.">${escapeHtml(effects)}</textarea>
@@ -486,130 +491,126 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
 
 
     function renderMonCard(mon, i) {
-      // Autofill from species per current mode (keeps user overrides)
-      autofillBaseFromSpecies(mon);
+  // ✅ use a non-mutating view model instead of writing into `mon`
+  const vm = viewWithAutofill(mon);
 
-      const abilityChips = mon.abilities.map((ab, ai) => {
-        const name = typeof ab === "object" ? ab.name || "" : ab;
-        const desc = typeof ab === "object" ? ab.desc || "" : "";
-        return `
-    <div class="chip" data-idx="${i}" data-ability="${ai}" style="flex-direction:column;align-items:stretch;gap:4px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <input type="text" value="${escapeHtml(name)}" data-field="ability-name" placeholder="Ability name" />
-        <span class="x" title="Remove ability" data-action="remove-ability">&times;</span>
+  const abilityChips = (vm.abilities || []).map((ab, ai) => {
+    const name = typeof ab === "object" ? ab.name || "" : ab;
+    const desc = typeof ab === "object" ? ab.desc || "" : "";
+    return `
+      <div class="chip" data-idx="${i}" data-ability="${ai}" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" value="${escapeHtml(name)}" data-field="ability-name" placeholder="Ability name" autocomplete="off" />
+          <span class="x" title="Remove ability" data-action="remove-ability">&times;</span>
+        </div>
+        <textarea data-field="ability-desc" placeholder="Description"
+          style="width:100%;min-height:40px;background:#10182a;border:1px solid #223154;color:#fff;border-radius:6px;padding:4px 6px;"
+          autocomplete="off">${escapeHtml(desc)}</textarea>
       </div>
-      <textarea data-field="ability-desc" placeholder="Description" 
-        style="width:100%;min-height:40px;background:#10182a;border:1px solid #223154;color:#fff;border-radius:6px;padding:4px 6px;">${escapeHtml(desc)}</textarea>
+    `;
+  }).join("");
+
+  const moveRows = renderMoveRows(vm, i);
+
+  // compute stats from the view
+  const S = computeConquestStats(vm);
+  const l1 = S.l1, cur = S.cur;
+  const typesStr = (vm.types || []).join(", ");
+
+  return `
+    <div class="poke-card" data-idx="${i}">
+      <h3>
+        Slot ${i + 1} <span data-title-name>${vm.name ? `— ${escapeHtml(vm.name)}` : ""}</span>
+        <span class="danger" data-action="remove-mon" title="Remove Pokémon">×</span>
+      </h3>
+
+      <label>Name
+        <input type="text" data-field="name" value="${escapeHtml(vm.name)}" autocomplete="off">
+      </label>
+
+      <div class="row">
+        <label>Level
+          <input type="number" min="1" max="1000" data-field="level" value="${vm.level}">
+        </label>
+        <label>Species
+          <input type="text" placeholder="pikachu, umbreon" data-field="species" value="${escapeHtml(vm.species || '')}" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Types (comma-sep)
+          <input type="text" placeholder="dark, electric" data-field="types" value="${escapeHtml(typesStr)}" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="subhead">Base Stats (enter Pokédex base numbers)</div>
+      <div class="moves" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+        ${['hp','atk','def','spa','spd','spe'].map(k => `
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span style="opacity:.8;text-transform:uppercase;font-size:.8rem">${k}</span>
+            <input type="number" step="1" inputmode="numeric" min="0" max="255"
+                   data-field="base-${k}"
+                   value="${Math.round(+vm.base?.[k] || 0)}"
+                   placeholder="${k==='hp' ? 'e.g. 96' : 'e.g. 130'}">
+          </label>
+        `).join('')}
+      </div>
+
+      <div class="subhead">Level-1 Stats (derived)</div>
+      <div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+        <div>HP:  <span class="soft" data-stat="l1-hp">${l1.hp}</span></div>
+        <div>Atk: <span class="soft" data-stat="l1-atk">${l1.atk}</span></div>
+        <div>Def: <span class="soft" data-stat="l1-def">${l1.def}</span></div>
+        <div>SpA: <span class="soft" data-stat="l1-spa">${l1.spa}</span></div>
+        <div>SpD: <span class="soft" data-stat="l1-spd">${l1.spd}</span></div>
+        <div>Spe: <span class="soft" data-stat="l1-spe">${l1.spe}</span></div>
+        <div>Range: <span class="soft" data-stat="l1-range">${l1.range}</span></div>
+      </div>
+
+      <div class="subhead">Final Stats (Level × L1; Range doesn’t scale)</div>
+      <div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+        <div>HP:  <span class="soft" data-stat="cur-hp">${cur.hp}</span></div>
+        <div>Atk: <span class="soft" data-stat="cur-atk">${cur.atk}</span></div>
+        <div>Def: <span class="soft" data-stat="cur-def">${cur.def}</span></div>
+        <div>SpA: <span class="soft" data-stat="cur-spa">${cur.spa}</span></div>
+        <div>SpD: <span class="soft" data-stat="cur-spd">${cur.spd}</span></div>
+        <div>Spe: <span class="soft" data-stat="cur-spe">${cur.spe}</span></div>
+        <div>Range: <span class="soft" data-stat="cur-range">${cur.range}</span></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="subhead">Shiny</div>
+          <label style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" data-field="shiny" ${vm.shiny ? "unchecked" : ""}>
+            <span>${vm.shiny ? "This Pokémon is shiny ✨" : "Yes"}</span>
+          </label>
+        </div>
+        <div>
+          <div class="subhead">Moves (meta)</div>
+          <div style="opacity:.75;font-size:.9rem">Level 1 knows moves up to VG level 5 (Conquest L × 5). DM sets range &amp; opportunity.</div>
+        </div>
+      </div>
+
+      <div class="subhead">Abilities</div>
+      <div class="chip-row" data-abilities="${i}">
+        ${abilityChips || '<span style="opacity:.7">No abilities yet.</span>'}
+        <button class="small-btn" data-action="add-ability" data-idx="${i}">+ Add Ability</button>
+      </div>
+
+      <div class="subhead">Moves</div>
+      <div class="moves" data-moves="${i}">
+        ${moveRows || '<span style="opacity:.7">No moves yet.</span>'}
+        <button class="small-btn" data-action="add-move" data-idx="${i}">+ Add Move</button>
+      </div>
     </div>
   `;
-      }).join("");
-
-
-      const moveRows = renderMoveRows(mon, i);
-
-
-      const S = computeConquestStats(mon);
-      const l1 = S.l1, cur = S.cur;
-      const typesStr = (mon.types || []).join(", ");
-
-      return `
-        <div class="poke-card" data-idx="${i}">
-          <h3>
-            Slot ${i + 1} <span data-title-name>${mon.name ? `— ${escapeHtml(mon.name)}` : ""}</span>
-            <span class="danger" data-action="remove-mon" title="Remove Pokémon">×</span>
-          </h3>
-
-          <label>Name
-            <input type="text" data-field="name" value="${escapeHtml(mon.name)}">
-          </label>
-
-          <div class="row">
-            <label>Level
-              <input type="number" min="1" max="1000" data-field="level" value="${mon.level}">
-            </label>
-            <label>Species
-              <input type="text" placeholder="pikachu, Umbreon" data-field="species" value="${escapeHtml(mon.species || '')}">
-            </label>
-          </div>
-
-          <div class="row">
-            <label>Types (comma-sep)
-              <input type="text" placeholder="electric" data-field="types" value="${escapeHtml(typesStr)}">
-            </label>
-            <label>Ability
-              <input type="text" placeholder="Static" data-field="ability" value="${escapeHtml(mon.ability || '')}">
-            </label>
-          </div>
-
-          <div class="subhead">Base Stats (enter Pokédex base numbers)</div>
-<div class="moves" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
-  ${['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map(k => `
-    <label style="display:flex;flex-direction:column;gap:4px">
-      <span style="opacity:.8;text-transform:uppercase;font-size:.8rem">${k}</span>
-      <input
-        type="number" step="1" inputmode="numeric"
-        min="0" max="255"
-        data-field="base-${k}"
-        value="${Math.round(+mon.base?.[k] || 0)}"
-        placeholder="${k === 'hp' ? 'e.g. 96' : 'e.g. 130'}">
-    </label>
-  `).join('')}
-</div>
-
-<div class="subhead">Level-1 Stats (derived)</div>
-<div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
-  <div>HP:  <span class="soft" data-stat="l1-hp"></span></div>
-  <div>Atk: <span class="soft" data-stat="l1-atk"></span></div>
-  <div>Def: <span class="soft" data-stat="l1-def"></span></div>
-  <div>SpA: <span class="soft" data-stat="l1-spa"></span></div>
-  <div>SpD: <span class="soft" data-stat="l1-spd"></span></div>
-  <div>Spe: <span class="soft" data-stat="l1-spe"></span></div>
-  <div>Range: <span class="soft" data-stat="l1-range"></span></div>
-</div>
-
-
-<div class="subhead">Final Stats (Level × L1; Range doesn’t scale)</div>
-<div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
-  <div>HP:  <span class="soft" data-stat="cur-hp"></span></div>
-  <div>Atk: <span class="soft" data-stat="cur-atk"></span></div>
-  <div>Def: <span class="soft" data-stat="cur-def"></span></div>
-  <div>SpA: <span class="soft" data-stat="cur-spa"></span></div>
-  <div>SpD: <span class="soft" data-stat="cur-spd"></span></div>
-  <div>Spe: <span class="soft" data-stat="cur-spe"></span></div>
-  <div>Range: <span class="soft" data-stat="cur-range"></span></div>
-</div>
-
-
-          <div class="row">
-            <div>
-              <div class="subhead">Shiny</div>
-<label style="display:flex;align-items:center;gap:8px">
-  <input type="checkbox" data-field="shiny" ${mon.shiny ? "checked" : ""}>
-  <span>${mon.shiny ? "This Pokémon is shiny ✨" : "yes"}</span>
-</label>
-            </div>
-            <div>
-              <div class="subhead">Moves (meta)</div>
-              <div style="opacity:.75;font-size:.9rem">Level 1 knows moves up to VG level 5 (Conquest L × 5). DM sets range &amp; opportunity.</div>
-            </div>
-          </div>
-
-          <div class="subhead">Abilities</div>
-          <div class="chip-row" data-abilities="${i}">
-            ${abilityChips || '<span style="opacity:.7">No abilities yet.</span>'}
-            <button class="small-btn" data-action="add-ability" data-idx="${i}">+ Add Ability</button>
-          </div>
-
-          <div class="subhead">Moves</div>
-<div class="moves" data-moves="${i}">
-  ${moveRows || '<span style="opacity:.7">No moves yet.</span>'}
-  <button class="small-btn" data-action="add-move" data-idx="${i}">+ Add Move</button>
-</div>
-
-      `;
-    }
-
-
+}
+// somewhere global:
+function ensureMoveArray(mon) {
+  if (!Array.isArray(mon.moves)) mon.moves = [];
+  return mon.moves;
+}
     // If user types a decimal (e.g., "6.5") into a base field, assume it's an L1 value and
     // convert back to a Pokédex base so the level-up math stays correct.
     function normalizeBaseEntry(statKey, raw) {
@@ -639,6 +640,29 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
   if (tcEl)   tcEl.textContent   = `${mv.type || '—'} / ${mv.cat || 'physical'}`;
   if (stEl)   stEl.textContent   = `Pwr ${Math.max(0, mv.power|0)} · Acc ${Math.max(1, Math.min(100, mv.acc|0))}% · R${Math.max(1, mv.range|0)}${mv.opp ? ' · OA' : ''}`;
 }
+
+// Make this function PURE (no writes to mon)
+function viewWithAutofill(mon) {
+  const key = (mon.species || "").toLowerCase().replace(/\s+|[\.\-]/g, "");
+  const bs = BASE_STATS[key];
+  if (!bs) return mon; // no changes
+
+  // Fill only missing base numbers in a copy
+  const b = mon.base || {};
+  return {
+    ...mon,
+    base: {
+      hp:  b.hp  ?? bs.hp,
+      atk: b.atk ?? bs.atk,
+      def: b.def ?? bs.def,
+      spa: b.spa ?? bs.spa,
+      spd: b.spd ?? bs.spd,
+      spe: b.spe ?? bs.spe,
+      range: b.range ?? 1
+    }
+  };
+}
+
 
 
 
@@ -706,7 +730,7 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
 
       if (field === "move-name" || field === "move-type" || field === "move-cat" ||
     field === "move-power" || field === "move-acc" || field === "move-range" ||
-    field === "move-opp" || field === "move-effects") {
+    field === "move-opp" || field === "move-pri"|| field === "move-effects") {
 
   const row = e.target.closest("[data-move]");
   const mi = +row.dataset.move;
@@ -724,6 +748,7 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
     case "move-acc":   mv.acc   = Math.max(1, Math.min(100, Math.round(+e.target.value || 100))); e.target.value = mv.acc; break;
     case "move-range": mv.range = Math.max(1, Math.round(+e.target.value || 1)); e.target.value = mv.range; break;
     case "move-opp":   mv.opp   = e.target.checked; break;
+    case "move-pri": mv.pri = e.target.checked; break;
     case "move-effects": mv.effects = e.target.value; break;
   }
 
@@ -801,7 +826,7 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
         renderTeam(); markDirty(); return;
       }
       if (e.target.matches('[data-action="remove-move"]')) {
-        const row = e.target.closest(".move-row");
+        const row = e.target.closest(".move-details");
         const i = +row.dataset.idx, mi = +row.dataset.move;
         team[i].moves.splice(mi, 1);
         renderTeam(); markDirty(); return;
@@ -811,7 +836,32 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
         team[idx].shiny = { rolled: true, roll };
         renderTeam(); markDirty(); return;
       }
+      // inside onClick(e):
+if (e.target.closest('[data-action="remove-move"]')) {
+  e.preventDefault();  // don't toggle the <details> when clicking "Remove"
+  e.stopPropagation();
+
+  const card = e.target.closest('.poke-card');
+  if (!card) return;
+  const idx = +card.dataset.idx;
+
+  const row = e.target.closest('.move-details');   // <-- updated selector
+  if (!row) return;
+  const mi = +row.dataset.move;
+
+  const moves = Array.isArray(team[idx].moves) ? team[idx].moves : (team[idx].moves = []);
+  if (mi >= 0 && mi < moves.length) moves.splice(mi, 1);
+
+  // If you keep other parallel arrays (e.g. movesMeta, legacy names), splice them too.
+  // if (Array.isArray(team[idx].movesMeta)) team[idx].movesMeta.splice(mi, 1);
+
+  markDirty();
+  renderTeam(); // reindex data-move attributes
+  return;
+}
+
     }
+
 
     /** ---- Trainer meta (name & picture) ---- */
     function loadTrainerMeta() { try { return JSON.parse(localStorage.getItem(TRAINER_META_KEY)) || {}; } catch { return {}; } }
@@ -895,8 +945,14 @@ function ensurePlayerInRoster(pid, name, portraitDataUrl) {
       else dlg.setAttribute("open", "");
     }
 
+    
+
     // Toolbar buttons
-    qs("#addMon").addEventListener("click", () => { team.push(blankMon()); renderTeam(); markDirty(); });
+qs("#addMon").addEventListener("click", () => {
+  team = [...team, blankMon()];
+  renderTeam();
+  markDirty();
+});
     qs("#clearTeam").addEventListener("click", () => {
       if (confirm("Clear this trainer’s entire team?")) { team = []; renderTeam(); markDirty(); }
     });
