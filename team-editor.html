@@ -468,7 +468,9 @@ const blankMon = () => ({
 
           <label>
             <span>Range</span>
-            <input type="number" min="1" step="1" data-field="move-range" value="${range}">
+            <input type="text" step="1" data-field="move-range" value="${escapeHtml(range)}">
+            <span>Range Effects</span>
+            <input type="text" data-field="move-range-effect" value="${escapeHtml(effects)}">
           </label>
 
           <label class="row-align">
