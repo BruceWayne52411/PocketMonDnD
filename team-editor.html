@@ -979,9 +979,22 @@ qs("#addMon").addEventListener("click", () => {
     });
 
     qs("#downloadJson").addEventListener("click", () => {
-      const text = qs("#jsonArea").value || JSON.stringify(buildProfile(), null, 2);
-      downloadBlob(text, `sengo-profile_${playerId}.json`);
-    });
+  const defaultName = makeDefaultFilename(); // e.g. sengo-profile_p-alex_2025-10-22.json
+  const name = prompt("Filename for export:", defaultName) || defaultName;
+  const file = ensureJsonExt(sanitizeFilename(name));
+  const text = qs("#jsonArea").value || JSON.stringify(buildProfile(), null, 2);
+  downloadBlob(text, file);
+});
+
+function makeDefaultFilename() {
+  const safePlayer = (currentTrainerName?.() || playerId || "trainer").replace(/\s+/g, "_");
+  const d = new Date();
+  const iso = d.toISOString().slice(0,10); // YYYY-MM-DD
+  return `sengo-profile_${safePlayer}_${iso}.json`;
+}
+function ensureJsonExt(name){ return name.toLowerCase().endsWith(".json") ? name : name + ".json"; }
+function sanitizeFilename(name){ return name.replace(/[\/\\:*?"<>|]+/g,"").trim() || "profile.json"; }
+
 
     qs("#applyImport").addEventListener("click", () => {
   try {
