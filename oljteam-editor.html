@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sengo Team Editor</title>
+  <link rel="stylesheet" href="stylesTeam.css">
+</head>
+<body>
+  <section class="editor-wrap">
+    <h1>Team Editor (with Base → L1 → Final stats)</h1>
+    <div id="teamGrid"></div>
+    <button id="addMon">+ Add Pokémon</button>
+  </section>
+
+<script>
+// --- Helpers ---
+const roundToNearest5 = (n) => Math.round((+n || 0) / 5) * 5;
+
+function l1NonHp(baseStat) { return roundToNearest5(baseStat) / 10; }
+function l1Hp(baseHp) { return (roundToNearest5(baseHp) / 10) * 4; }
+
+function rangeFromBaseSpe(baseSpe) {
+  const n = Math.max(0, Number(baseSpe) || 0);
+  const q = Math.floor(n / 30);
+  const r = n - q * 30;
+  return q + (r > 20 ? 1 : 0) + 1;
+}
+
+function computeConquestStats(mon) {
+  const b = mon.base || {hp:0, atk:0, def:0, spa:0, spd:0, spe:0};
+  const L = Math.max(1, Math.min(1000, +mon.level || 1));
+
+  const l1 = {
+    hp:  l1Hp(b.hp),
+    atk: l1NonHp(b.atk),
+    def: l1NonHp(b.def),
+    spa: l1NonHp(b.spa),
+    spd: l1NonHp(b.spd),
+    spe: l1NonHp(b.spe),
+    range: rangeFromBaseSpe(b.spe),
+  };
+
+  const cur = {
+    hp:  l1.hp  * L,
+    atk: l1.atk * L,
+    def: l1.def * L,
+    spa: l1.spa * L,
+    spd: l1.spd * L,
+    spe: l1.spe * L,
+    range: l1.range,
+  };
+
+  return { l1, cur };
+}
+
+// --- Data ---
+const team = [];
+
+// --- Render ---
+function renderTeam() {
+  const grid = document.getElementById("teamGrid");
+  grid.innerHTML = team.map((mon,i)=>renderMonCard(mon,i)).join("");
+}
+
+function renderMonCard(mon, i) {
+  const stats = computeConquestStats(mon);
+  const l1 = stats.l1, cur = stats.cur;
+  return `
+    <div class="poke-card" data-idx="${i}" style="border:1px solid #2a75bb;padding:10px;margin:10px">
+      <h3>Pokémon ${i+1}</h3>
+      <label>Level: <input type="number" data-field="level" value="${mon.level}" min="1" max="1000"></label>
+      <div><strong>Base Stats</strong></div>
+      <div>HP: <input type="number" data-field="base-hp" value="${mon.base.hp}"></div>
+      <div>Atk:<input type="number" data-field="base-atk" value="${mon.base.atk}"></div>
+      <div>Def:<input type="number" data-field="base-def" value="${mon.base.def}"></div>
+      <div>SpA:<input type="number" data-field="base-spa" value="${mon.base.spa}"></div>
+      <div>SpD:<input type="number" data-field="base-spd" value="${mon.base.spd}"></div>
+      <div>Spe:<input type="number" data-field="base-spe" value="${mon.base.spe}"></div>
+
+      <div><strong>Level-1 Stats (derived)</strong></div>
+      <div>HP: ${l1.hp}</div>
+      <div>Atk: ${l1.atk}</div>
+      <div>Def: ${l1.def}</div>
+      <div>SpA: ${l1.spa}</div>
+      <div>SpD: ${l1.spd}</div>
+      <div>Spe: ${l1.spe}</div>
+      <div>Range: ${l1.range}</div>
+
+      <div><strong>Final Stats (Level × L1)</strong></div>
+      <div>HP: ${cur.hp}</div>
+      <div>Atk: ${cur.atk}</div>
+      <div>Def: ${cur.def}</div>
+      <div>SpA: ${cur.spa}</div>
+      <div>SpD: ${cur.spd}</div>
+      <div>Spe: ${cur.spe}</div>
+      <div>Range: ${cur.range}</div>
+    </div>`;
+}
+
+// --- Events ---
+document.getElementById("addMon").addEventListener("click", ()=>{
+  team.push({
+    level:1,
+    base:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}
+  });
+  renderTeam();
+});
+
+document.getElementById("teamGrid").addEventListener("input",(e)=>{
+  const card = e.target.closest(".poke-card");
+  if (!card) return;
+  const idx = +card.dataset.idx;
+  const field = e.target.dataset.field;
+  if (field==="level") {
+    team[idx].level = +e.target.value||1;
+  }
+  if (field && field.startsWith("base-")) {
+    const k = field.split("-")[1];
+    team[idx].base[k] = +e.target.value||0;
+  }
+  renderTeam();
+});
+
+// Init
+renderTeam();
+</script>
+</body>
+</html>

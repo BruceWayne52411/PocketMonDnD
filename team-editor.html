@@ -1,359 +1,1016 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
+
 <head>
   <script>
-  if (localStorage.getItem("auth") !== "true") {
-    window.location.href = "login.html"; // redirect to login if not logged in
-  }
-</script>
+    if (localStorage.getItem("auth") !== "true") {
+      window.location.href = "login.html";
+    }
+  </script>
 
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sengo Team Editor</title>
-<link rel="stylesheet" href="styles.css" />
-<style>
-  .editor-wrap { max-width: 1100px; margin: 0 auto; padding: clamp(16px,4vw,32px); }
-  .crumbs { margin-bottom: 12px; }
-  .crumbs a { color: #9ec3ff; text-decoration: none; }
-  .crumbs a:hover { text-decoration: underline; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sengo Team Editor</title>
+  <link rel="stylesheet" href="stylesTeam.css">
 
-  .editor-head {
-    display: grid; gap: 8px;
-    grid-template-columns: 64px 1fr auto;
-    align-items: center;
-    padding: 16px;
-    border: 2px solid #2a75bb;
-    border-radius: 14px;
-    background: rgba(12,16,28,.65);
-    color: #fff;
-  }
-  .trainer-thumb {
-    width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background:#1d2540; border:1px solid #2a75bb;
-  }
-  .trainer-name { margin: 0; font-size: 1.25rem; color:#ffcb05; text-shadow:1px 1px #244d87; }
-  .save-badge { font-weight:700; color:#9ff7c2; }
-
-  .team-grid {
-    margin-top: 16px;
-    display: grid; gap: 14px;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
-  .poke-card {
-    background: rgba(12,16,28,.65);
-    border: 2px solid #2a75bb;
-    border-radius: 14px;
-    padding: 12px;
-    color: #fff;
-  }
-  .poke-card h3 {
-    margin: 0 0 8px; font-size: 1.05rem; color: #ffcb05; text-shadow: 1px 1px #244d87;
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-
-  .subhead { margin: 10px 0 6px; font-weight:700; color:#cfe1ff; }
-  .chip-row { display:flex; flex-wrap: wrap; gap: 6px; }
-  .chip {
-    display:flex; align-items:center; gap:6px;
-    background:#10182a; border:1px solid #223154; color:#e9f0ff;
-    padding: 6px 8px; border-radius: 999px;
-  }
-  .chip input {
-    background: transparent; border: none; color: inherit; width: 9ch;
-    outline: none;
-  }
-  .chip .x {
-    color:#ff6b6b; cursor:pointer; font-weight:900; line-height: 1;
-  }
-
-  .moves { display:flex; flex-direction: column; gap:6px; }
-  .move-row {
-    display:grid; grid-template-columns: 1fr auto;
-    gap: 8px; align-items: center;
-  }
-  .move-row input {
-    width: 100%; padding: 8px 10px;
-    border-radius: 10px; border: 1px solid #223154; background:#10182a; color:#fff;
-  }
-  .small-btn {
-    border: 1px solid #2a75bb; background:#2a75bb; color:#fff; font-weight:700;
-    border-radius: 10px; padding: 6px 10px; cursor:pointer;
-  }
-  .small-btn.secondary { background: transparent; }
-  .danger { color:#ff6b6b; cursor:pointer; font-weight:700; }
-  .soft { color:#9ec3ff; font-weight:700; }
-
-  .toolbar {
-    margin-top: 16px; display:flex; gap:10px; flex-wrap:wrap;
-  }
-  .btn {
-    border: 2px solid #2a75bb; background:#2a75bb; color:#fff; font-weight:700;
-    border-radius: 12px; padding: 8px 12px; cursor:pointer;
-  }
-  .btn.secondary { background: transparent; }
-  .json-box { width:100%; min-height:120px; }
-</style>
 </head>
+
 <body>
-<div class="editor-wrap">
-  <nav class="crumbs">
-    <a href="conquest-of-sengo.html">← Back to Session</a>
-  </nav>
+  <div class="editor-wrap">
+    <nav class="crumbs">
+      <a href="conquest-of-sengo.html">← Back to Session</a>
+    </nav>
 
-  <header class="editor-head">
-    <img id="trainerThumb" class="trainer-thumb" alt="Trainer portrait" src="assets/players/_placeholder.jpg">
-    <div>
-      <h2 class="trainer-name" id="trainerName">Trainer</h2>
-      <div id="playerId" style="opacity:.7;font-size:.9rem;"></div>
+    <header class="editor-head">
+      <img id="trainerThumb" class="trainer-thumb" alt="Trainer portrait" src="assets/players/_placeholder.jpg">
+      <div>
+        <h2 class="trainer-name" id="trainerName">Trainer</h2>
+      </div>
+      <div class="save-badge" id="saveState">All changes saved</div>
+    </header>
+
+    <section class="team-grid" id="teamGrid"></section>
+
+    <div class="toolbar">
+      <button id="addMon" class="btn">+ Add Pokémon</button>
+      <button id="clearTeam" class="btn secondary">Clear Team</button>
+      <button id="updateStats" class="btn secondary">Update Stats</button>
+      <button id="profileJsonBtn" class="btn secondary">Profile JSON</button>
     </div>
-    <div class="save-badge" id="saveState">All changes saved</div>
-  </header>
 
-  <section class="team-grid" id="teamGrid"></section>
+    <!-- Trainer settings -->
+    <div class="toolbar" style="margin-top:10px; gap:10px; flex-wrap:wrap">
+      <label class="btn secondary" style="cursor:text">
+        <span style="margin-right:6px">Trainer Name:</span>
+        <input id="trainerNameInput" type="text"
+          style="background:transparent;border:none;color:#fff;outline:none;width:18ch" placeholder="Trainer name">
+      </label>
 
-  <div class="toolbar">
-    <button id="addMon" class="btn">+ Add Pokémon</button>
-    <button id="clearTeam" class="btn secondary">Clear Team</button>
-    <button id="exportBtn" class="btn secondary">Export JSON</button>
-    <button id="importBtn" class="btn secondary">Import JSON</button>
+      <label class="btn" style="cursor:pointer">
+        Change Picture
+        <input id="trainerPicFile" type="file" accept="image/*" style="display:none">
+      </label>
+
+      <button id="resetTrainerMeta" class="btn secondary" type="button"
+        title="Reset to default portrait &amp; name">Reset</button>
+    </div>
   </div>
 
-  <textarea id="jsonArea" class="json-box" placeholder="Export/Import JSON will appear here…"></textarea>
-</div>
-
-<script>
-/** ---- Page setup ---- */
-const qs = (sel, root=document) => root.querySelector(sel);
-const qsa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-const params = new URLSearchParams(location.search);
-const playerId = params.get("player") || "unknown";
-qs("#playerId").textContent = playerId;
-
-const trainerDirectory = {
-  "p-alex":  { name:"Alex Rivers",  portrait:"assets/players/alex.jpg"  },
-  "p-blair": { name:"Blair Henson", portrait:"assets/players/blair.jpg" },
-  "p-cam":   { name:"Cam Nguyen",   portrait:"assets/players/cam.jpg"   }
-};
-const trainer = trainerDirectory[playerId] || { name:"Unknown Trainer", portrait:"assets/players/_placeholder.jpg" };
-qs("#trainerName").textContent = trainer.name;
-qs("#trainerThumb").src = trainer.portrait;
-
-const STORAGE_KEY = `sengo:team:${playerId}`;
-
-/** ---- Data model ----
- * Each Pokémon:
- * { name:"", level:1, abilities:[""], moves:["","",...]}
- */
-const blankMon = () => ({
-  name:"", level:1,
-  abilities: [""],
-  moves: [""]
-});
-
-/** ---- Storage ---- */
-function loadTeam() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch { return []; }
-}
-function saveTeam() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(team));
-  markSaved();
-}
-
-let team = loadTeam();
-
-/** ---- Save state UI ---- */
-function markSaved(msg="All changes saved") {
-  qs("#saveState").textContent = msg;
-}
-function markDirty() {
-  qs("#saveState").textContent = "Saving…";
-  clearTimeout(window.__saveTimer);
-  window.__saveTimer = setTimeout(saveTeam, 250);
-}
-
-/** ---- Rendering ---- */
-function renderTeam() {
-  const grid = qs("#teamGrid");
-  grid.innerHTML = team.map((mon, i) => renderMonCard(mon, i)).join("");
-}
-
-function renderMonCard(mon, i) {
-  const abilityChips = mon.abilities.map((ab, ai) => `
-    <span class="chip" data-idx="${i}" data-ability="${ai}">
-      <input type="text" value="${escapeHtml(ab)}" data-field="ability" />
-      <span class="x" title="Remove ability" data-action="remove-ability">&times;</span>
-    </span>
-  `).join("");
-
-  const moveRows = mon.moves.map((mv, mi) => `
-    <div class="move-row" data-idx="${i}" data-move="${mi}">
-      <input type="text" value="${escapeHtml(mv)}" data-field="move" />
-      <button class="small-btn secondary" data-action="remove-move" title="Remove move">Remove</button>
-    </div>
-  `).join("");
-
-  return `
-    <div class="poke-card" data-idx="${i}">
-      <h3>
-        Slot ${i+1} ${mon.name ? `— ${escapeHtml(mon.name)}` : ""}
-        <span class="danger" data-action="remove-mon" title="Remove Pokémon">×</span>
-      </h3>
-
-      <label>Name
-        <input type="text" data-field="name" value="${escapeHtml(mon.name)}">
-      </label>
-      <div class="row">
-        <label>Level
-          <input type="number" min="1" max="1000" data-field="level" value="${mon.level}">
-        </label>
-        <div></div>
+  <!-- Profile Import/Export Modal -->
+  <dialog id="jsonModal">
+    <form method="dialog" class="modal-inner">
+      <div class="modal-head">
+        <h3 id="jsonModalTitle" style="margin:0">Export / Import Profile</h3>
+        <button value="close" class="btn secondary" style="margin:0">Close</button>
       </div>
 
-      <div class="subhead">Abilities</div>
-      <div class="chip-row" data-abilities="${i}">
-        ${abilityChips || '<span style="opacity:.7">No abilities yet.</span>'}
-        <button class="small-btn" data-action="add-ability" data-idx="${i}">+ Add Ability</button>
-      </div>
+      <div class="json-flex">
+        <textarea id="jsonArea" class="json-box" placeholder='{
+  "format": "sengo-profile-v1",
+  "player": { "id": "p-alex", "name": "Alex Rivers", "portrait": "data:image/png;base64,..." },
+  "team": [
+    {
+      "name": "", "level": 1, "species":"", "types": [], "ability": "",
+      "base": { "hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0 },
+      "abilities": [""], "moves": [""]
+    }
+  ]
+}'></textarea>
 
-      <div class="subhead">Moves</div>
-      <div class="moves" data-moves="${i}">
-        ${moveRows || '<span style="opacity:.7">No moves yet.</span>'}
-        <button class="small-btn" data-action="add-move" data-idx="${i}">+ Add Move</button>
+        <div class="json-side">
+          <label class="btn" style="cursor:pointer">
+            Load from file
+            <input id="jsonFile" type="file" accept="application/json,.json" style="display:none">
+          </label>
+          <button type="button" id="copyJson" class="btn secondary">Copy to clipboard</button>
+          <button type="button" id="downloadJson" class="btn">Download .json</button>
+          <button type="button" id="applyImport" class="btn">Apply Import</button>
+          <small style="opacity:.75">Tip: Export opens JSON here. Copy or download; others can paste/load and
+            Apply.</small>
+        </div>
       </div>
+    </form>
+  </dialog>
+
+  <script>
+    /** ---- Page setup ---- */
+    const qs = (sel, root = document) => root.querySelector(sel);
+    const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+    const params = new URLSearchParams(location.search);
+    const playerId = params.get("player") || "unknown";
+    
+
+    const ROSTER_KEY = 'sengo:players';
+const trainerIconKey = (pid) => `sengo:trainerIcon:${pid}`;
+const trainerMetaKey = (pid) => `sengo:trainerMeta:${pid}`;
+const teamKey        = (pid) => `sengo:team:${pid}`;
+
+function loadRoster() {
+  try { return JSON.parse(localStorage.getItem(ROSTER_KEY)) || []; }
+  catch { return []; }
+}
+function saveRoster(list) {
+  localStorage.setItem(ROSTER_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+}
+function ensurePlayerInRoster(pid, name, portraitDataUrl) {
+  const roster = loadRoster();
+  const exists = roster.some(p => p.id === pid);
+  if (!exists) {
+    roster.push({
+      id: pid,
+      name: name || 'Trainer',
+      role: 'Trainer',
+      portrait: portraitDataUrl || 'assets/players/_placeholder.jpg'
+    });
+    saveRoster(roster);
+  } else {
+    // optional: update name/portrait if you want the roster tile to reflect import
+    roster.forEach(p => {
+      if (p.id === pid) {
+        if (name) p.name = name;
+        if (portraitDataUrl) p.portrait = portraitDataUrl;
+      }
+    });
+    saveRoster(roster);
+  }
+}
+
+
+    const trainerDirectory = {
+      "p-alex": { name: "Alex Rivers", portrait: "assets/players/alex.jpg" },
+      "p-blair": { name: "Blair Henson", portrait: "assets/players/blair.jpg" },
+      "p-cam": { name: "Cam Nguyen", portrait: "assets/players/cam.jpg" }
+    };
+    const TRAINER_ICON_KEY = `sengo:trainerIcon:${playerId}`;
+    const trainer = trainerDirectory[playerId] || { name: "Unknown Trainer", portrait: "assets/players/_placeholder.jpg" };
+    qs("#trainerName").textContent = trainer.name;
+
+    const storedIcon = localStorage.getItem(TRAINER_ICON_KEY);
+    const thumbEl = qs("#trainerThumb");
+    thumbEl.onerror = function () { this.onerror = null; this.src = 'assets/players/_placeholder.jpg'; };
+    thumbEl.src = storedIcon || trainer.portrait || 'assets/players/_placeholder.jpg';
+
+    // Storage keys
+    const STORAGE_KEY = `sengo:team:${playerId}`;
+    const TRAINER_META_KEY = `sengo:trainerMeta:${playerId}`;
+    const INPUT_MODE_KEY = 'sengo:inputMode';
+    // --- Moves: constants used by renderMoveRows ---
+    const MOVE_TYPES = [
+      "normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground",
+      "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"
+    ];
+    const MOVE_CATEGORIES = ["physical", "special", "status"];
+
+
+    /** ---------------- Conquest Stat Engine + Model ---------------- */
+
+    // Small demo set; expand as needed
+    const BASE_STATS = {
+      pikachu: { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90 },
+      charizard: { hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 },
+      blastoise: { hp: 79, atk: 83, def: 100, spa: 85, spd: 105, spe: 78 },
+      venusaur: { hp: 80, atk: 82, def: 83, spa: 100, spd: 100, spe: 80 },
+      garchomp: { hp: 108, atk: 130, def: 95, spa: 80, spd: 85, spe: 102 },
+    };
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    // --- Helpers (Pokédex base -> L1) ---
+    const roundToNearest5 = (n) => Math.round((+n || 0) / 5) * 5;
+    function l1NonHp(baseStat) { return roundToNearest5(baseStat) / 10; }
+    function l1Hp(baseHp) { return (roundToNearest5(baseHp) / 10) * 4; }
+
+    function rangeFromBaseSpe(baseSpe) {
+      const n = Math.max(0, Number(baseSpe) || 0);
+      const q = Math.floor(n / 30);
+      const r = n - q * 30;
+      return q + (r > 20 ? 1 : 0) + 1;
+    }
+
+
+    function computeConquestStats(mon) {
+      const b = mon.base || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+      const L = Math.max(1, Math.min(1000, +mon.level || 1));
+
+      const l1 = {
+        hp: l1Hp(b.hp),
+        atk: l1NonHp(b.atk),
+        def: l1NonHp(b.def),
+        spa: l1NonHp(b.spa),
+        spd: l1NonHp(b.spd),
+        spe: l1NonHp(b.spe),
+        range: rangeFromBaseSpe(b.spe),
+      };
+
+      const cur = {
+        hp: l1.hp * L,
+        atk: l1.atk * L,
+        def: l1.def * L,
+        spa: l1.spa * L,
+        spd: l1.spd * L,
+        spe: l1.spe * L,
+        range: l1.range,
+      };
+
+      return { l1, cur };
+    }
+
+
+
+
+
+
+    // ---- Input Mode (base vs L1) ----
+    let INPUT_MODE = localStorage.getItem(INPUT_MODE_KEY) || 'base';
+    function setInputMode(mode) {
+      INPUT_MODE = (mode === 'l1') ? 'l1' : 'base';
+      localStorage.setItem(INPUT_MODE_KEY, INPUT_MODE);
+      // Relabel sections across cards
+      qsa('[data-base-label]').forEach(el => {
+        el.textContent = INPUT_MODE === 'l1'
+          ? 'Level-1 Stats (enter L1 numbers)'
+          : 'Base Stats (enter Pokédex base numbers)';
+      });
+      updateAllStats();
+    }
+
+    // Convert what's typed into true base stats for calc
+    function toTrueBase(mon) {
+      const b = mon.base || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+      if (INPUT_MODE === 'base') {
+        return {
+          hp: +b.hp || 0, atk: +b.atk || 0, def: +b.def || 0,
+          spa: +b.spa || 0, spd: +b.spd || 0, spe: +b.spe || 0
+        };
+      }
+      // INPUT_MODE === 'l1': invert L1 → approximate base
+      return {
+        hp: Math.round((+b.hp || 0) / 4 * 10), // (L1 /4)*10
+        atk: Math.round((+b.atk || 0) * 10),     //  L1*10
+        def: Math.round((+b.def || 0) * 10),
+        spa: Math.round((+b.spa || 0) * 10),
+        spd: Math.round((+b.spd || 0) * 10),
+        spe: Math.round((+b.spe || 0) * 10),
+      };
+    }
+
+
+
+    // If species is known, prefill inputs depending on mode
+    function baseForInputModeFromSpecies(bs) {
+      if (INPUT_MODE === 'base') return { ...bs };
+      // Convert Pokédex base → L1 values for input convenience
+      return {
+        hp: l1Hp(bs.hp),
+        atk: l1NonHp(bs.atk),
+        def: l1NonHp(bs.def),
+        spa: l1NonHp(bs.spa),
+        spd: l1NonHp(bs.spd),
+        spe: l1NonHp(bs.spe),
+      };
+    }
+
+    function autofillBaseFromSpecies(mon) {
+      const key = (mon.species || "").toLowerCase().replace(/\s+|[\.\-]/g, '');
+      const bs = BASE_STATS[key];
+      if (!bs) return mon;
+      const chosen = baseForInputModeFromSpecies(bs);
+      const b = mon.base || {};
+      mon.base = {
+        hp: b.hp || chosen.hp,
+        atk: b.atk || chosen.atk,
+        def: b.def || chosen.def,
+        spa: b.spa || chosen.spa,
+        spd: b.spd || chosen.spd,
+        spe: b.spe || chosen.spe,
+      };
+      return mon;
+    }
+
+    /** ---- Data model ---- */
+    const blankMon = () => ({
+      name: "", level: 1,
+      species: "", types: [], ability: "",
+      shiny: { rolled: false, roll: null },
+      base: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      movesMeta: [],
+      abilities: [""],
+      moves: [""]
+    });
+
+    function normalizeMon(mon) {
+      const m = mon || {};
+      const toNum = (v, d = 0) => Number.isFinite(+v) ? +v : d;
+      const base = m.base || {};
+
+      // Back-compat: coerce old shape {rolled,roll} to boolean
+      let shinyBool;
+      if (typeof m.shiny === "boolean") {
+        shinyBool = m.shiny;
+      } else if (m.shiny && typeof m.shiny === "object") {
+        // Treat any previously "rolled shiny" as shiny = true
+        // If you want stricter logic, change the condition.
+        shinyBool = !!m.shiny.rolled && (m.shiny.roll === 1 || m.shiny.roll === true);
+      } else {
+        shinyBool = false;
+      }
+
+      return {
+        name: m.name ?? "",
+        level: clamp(toNum(m.level, 1), 1, 1000),
+        species: (m.species || "").toLowerCase(),
+        types: Array.isArray(m.types) ? m.types.map(s => String(s || "").toLowerCase()).filter(Boolean) : [],
+        ability: String(m.ability || ""),
+        shiny: !!shinyBool,  // <-- boolean now
+        base: {
+          hp: toNum(base.hp, 0),
+          atk: toNum(base.atk, 0),
+          def: toNum(base.def, 0),
+          spa: toNum(base.spa, 0),
+          spd: toNum(base.spd, 0),
+          spe: toNum(base.spe, 0),
+        },
+        movesMeta: Array.isArray(m.movesMeta) ? m.movesMeta.map(x => ({
+          name: String(x?.name || ""),
+          type: String(x?.type || "").toLowerCase(),
+          power: toNum(x?.power, 0),
+          acc: toNum(x?.acc, 100),
+          effects: String(x?.effects || ""),
+          opportunity: !!x?.opportunity,
+        })) : [],
+        abilities: Array.isArray(m.abilities)
+          ? m.abilities.map(a => (typeof a === "string" ? { name: a, desc: "" } : {
+            name: String(a?.name || ""),
+            desc: String(a?.desc || "")
+          }))
+          : [],
+        moves: Array.isArray(m.moves) ? m.moves.map(String) : [""],
+      };
+    }
+
+
+    /** ---- Storage ---- */
+    function loadTeam() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        return Array.isArray(data) ? data.map(normalizeMon) : [];
+      } catch { return []; }
+    }
+    function saveTeam() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(team));
+      markSaved();
+    }
+
+    let team = loadTeam();
+
+    /** ---- Save state UI ---- */
+    function markSaved(msg = "All changes saved") { qs("#saveState").textContent = msg; }
+    function markDirty() { qs("#saveState").textContent = "Saving…"; clearTimeout(window.__saveTimer); window.__saveTimer = setTimeout(saveTeam, 250); }
+
+    /** ---- Rendering ---- */
+    function renderTeam() {
+      const grid = qs("#teamGrid");
+      grid.innerHTML = team.map((mon, i) => renderMonCard(mon, i)).join("");
+
+      // 🔥 After the HTML is in the DOM, compute & paint final stats
+      requestAnimationFrame(() => {
+        qsa(".poke-card").forEach((card, i) => {
+          updateStatsInCard(card, team[i]);
+        });
+      });
+    }
+
+
+    // Update stats for all cards (button)
+    function updateAllStats() {
+      team.forEach((mon) => {
+        ['hp', 'atk', 'def', 'spa', 'spd', 'spe'].forEach(k => {
+          mon.base = mon.base || {};
+          mon.base[k] = +mon.base[k] || 0;
+        });
+        mon.level = Math.max(1, Math.min(1000, +mon.level || 1));
+      });
+      renderTeam();
+      markSaved("Stats updated");
+    }
+
+    // Inline update in a card
+    function updateStatsInCard(card, mon) {
+      const S = computeConquestStats(mon);
+      const l1 = S.l1, cur = S.cur;
+      const set = (key, val) => { const el = card.querySelector(`[data-stat="${key}"]`); if (el) el.textContent = String(val); };
+      set("l1-hp", l1.hp); set("cur-hp", cur.hp);
+      set("l1-atk", l1.atk); set("cur-atk", cur.atk);
+      set("l1-def", l1.def); set("cur-def", cur.def);
+      set("l1-spa", l1.spa); set("cur-spa", cur.spa);
+      set("l1-spd", l1.spd); set("cur-spd", cur.spd);
+      set("l1-spe", l1.spe); set("cur-spe", cur.spe);
+      set("l1-range", l1.range); set("cur-range", cur.range);
+    }
+
+    function renderMoveRows(mon, i) {
+      const moves = Array.isArray(mon.moves) ? mon.moves : [];
+      return moves.map((mv, mi) => {
+        const name = mv?.name ?? "";
+        const type = (mv?.type ?? "").toLowerCase();
+        const cat = (mv?.cat ?? "physical").toLowerCase();
+        const power = Number.isFinite(+mv?.power) ? +mv.power : 0;
+        const acc = Number.isFinite(+mv?.acc) ? +mv.acc : 100;
+        const range = Number.isFinite(+mv?.range) ? +mv.range : 1;
+        const opp = !!mv?.opp;
+        const effects = mv?.effects ?? "";
+
+        const typeOptions = ['<option value="">—</option>']
+          .concat(MOVE_TYPES.map(t => `<option value="${t}" ${t === type ? 'selected' : ''}>${t}</option>`))
+          .join('');
+
+        const catOptions = MOVE_CATEGORIES
+          .map(c => `<option value="${c}" ${c === cat ? 'selected' : ''}>${c}</option>`)
+          .join('');
+
+        return `
+      <details class="move-details" data-idx="${i}" data-move="${mi}">
+        <summary class="move-summary">
+      <strong data-sum-name>${escapeHtml(name || "(unnamed move)")}</strong>
+      <span data-sum-typecat style="opacity:.8;margin-left:8px">${escapeHtml(type || "—")} / ${escapeHtml(cat)}</span>
+      <span data-sum-stats  style="opacity:.7;margin-left:8px">Pwr ${power} · Acc ${acc}% · R${range}${opp ? " · OA" : ""}</span>
+      <button type="button" class="small-btn secondary" data-action="remove-move" title="Remove move" style="margin-left:auto">Remove</button>
+    </summary>
+
+        <div class="move-grid">
+          <label>
+            <span>Name</span>
+            <input type="text" data-field="move-name" value="${escapeHtml(name)}" placeholder="Thunderbolt">
+          </label>
+
+          <label>
+            <span>Type</span>
+            <select data-field="move-type">${typeOptions}</select>
+          </label>
+
+          <label>
+            <span>Category</span>
+            <select data-field="move-cat">${catOptions}</select>
+          </label>
+
+          <label>
+            <span>Power</span>
+            <input type="number" min="0" step="1" data-field="move-power" value="${power}">
+          </label>
+
+          <label>
+            <span>Accuracy %</span>
+            <input type="number" min="1" max="100" step="1" data-field="move-acc" value="${acc}">
+          </label>
+
+          <label>
+            <span>Range</span>
+            <input type="number" min="1" step="1" data-field="move-range" value="${range}">
+          </label>
+
+          <label class="row-align">
+            <input type="checkbox" data-field="move-opp" ${opp ? "checked" : ""}>
+            <span>Opportunity Attack / Priority</span>
+          </label>
+
+          <label class="span-2">
+            <span>Extra Effects</span>
+            <textarea data-field="move-effects" rows="2" placeholder="Paralyzes on hit; push 1 tile, etc.">${escapeHtml(effects)}</textarea>
+          </label>
+        </div>
+      </details>
+    `;
+      }).join('');
+    }
+
+
+    function renderMonCard(mon, i) {
+      // Autofill from species per current mode (keeps user overrides)
+      autofillBaseFromSpecies(mon);
+
+      const abilityChips = mon.abilities.map((ab, ai) => {
+        const name = typeof ab === "object" ? ab.name || "" : ab;
+        const desc = typeof ab === "object" ? ab.desc || "" : "";
+        return `
+    <div class="chip" data-idx="${i}" data-ability="${ai}" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="text" value="${escapeHtml(name)}" data-field="ability-name" placeholder="Ability name" />
+        <span class="x" title="Remove ability" data-action="remove-ability">&times;</span>
+      </div>
+      <textarea data-field="ability-desc" placeholder="Description" 
+        style="width:100%;min-height:40px;background:#10182a;border:1px solid #223154;color:#fff;border-radius:6px;padding:4px 6px;">${escapeHtml(desc)}</textarea>
     </div>
   `;
+      }).join("");
+
+
+      const moveRows = renderMoveRows(mon, i);
+
+
+      const S = computeConquestStats(mon);
+      const l1 = S.l1, cur = S.cur;
+      const typesStr = (mon.types || []).join(", ");
+
+      return `
+        <div class="poke-card" data-idx="${i}">
+          <h3>
+            Slot ${i + 1} <span data-title-name>${mon.name ? `— ${escapeHtml(mon.name)}` : ""}</span>
+            <span class="danger" data-action="remove-mon" title="Remove Pokémon">×</span>
+          </h3>
+
+          <label>Name
+            <input type="text" data-field="name" value="${escapeHtml(mon.name)}">
+          </label>
+
+          <div class="row">
+            <label>Level
+              <input type="number" min="1" max="1000" data-field="level" value="${mon.level}">
+            </label>
+            <label>Species
+              <input type="text" placeholder="pikachu, Umbreon" data-field="species" value="${escapeHtml(mon.species || '')}">
+            </label>
+          </div>
+
+          <div class="row">
+            <label>Types (comma-sep)
+              <input type="text" placeholder="electric" data-field="types" value="${escapeHtml(typesStr)}">
+            </label>
+            <label>Ability
+              <input type="text" placeholder="Static" data-field="ability" value="${escapeHtml(mon.ability || '')}">
+            </label>
+          </div>
+
+          <div class="subhead">Base Stats (enter Pokédex base numbers)</div>
+<div class="moves" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+  ${['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map(k => `
+    <label style="display:flex;flex-direction:column;gap:4px">
+      <span style="opacity:.8;text-transform:uppercase;font-size:.8rem">${k}</span>
+      <input
+        type="number" step="1" inputmode="numeric"
+        min="0" max="255"
+        data-field="base-${k}"
+        value="${Math.round(+mon.base?.[k] || 0)}"
+        placeholder="${k === 'hp' ? 'e.g. 96' : 'e.g. 130'}">
+    </label>
+  `).join('')}
+</div>
+
+<div class="subhead">Level-1 Stats (derived)</div>
+<div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+  <div>HP:  <span class="soft" data-stat="l1-hp"></span></div>
+  <div>Atk: <span class="soft" data-stat="l1-atk"></span></div>
+  <div>Def: <span class="soft" data-stat="l1-def"></span></div>
+  <div>SpA: <span class="soft" data-stat="l1-spa"></span></div>
+  <div>SpD: <span class="soft" data-stat="l1-spd"></span></div>
+  <div>Spe: <span class="soft" data-stat="l1-spe"></span></div>
+  <div>Range: <span class="soft" data-stat="l1-range"></span></div>
+</div>
+
+
+<div class="subhead">Final Stats (Level × L1; Range doesn’t scale)</div>
+<div class="moves" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+  <div>HP:  <span class="soft" data-stat="cur-hp"></span></div>
+  <div>Atk: <span class="soft" data-stat="cur-atk"></span></div>
+  <div>Def: <span class="soft" data-stat="cur-def"></span></div>
+  <div>SpA: <span class="soft" data-stat="cur-spa"></span></div>
+  <div>SpD: <span class="soft" data-stat="cur-spd"></span></div>
+  <div>Spe: <span class="soft" data-stat="cur-spe"></span></div>
+  <div>Range: <span class="soft" data-stat="cur-range"></span></div>
+</div>
+
+
+          <div class="row">
+            <div>
+              <div class="subhead">Shiny</div>
+<label style="display:flex;align-items:center;gap:8px">
+  <input type="checkbox" data-field="shiny" ${mon.shiny ? "checked" : ""}>
+  <span>${mon.shiny ? "This Pokémon is shiny ✨" : "yes"}</span>
+</label>
+            </div>
+            <div>
+              <div class="subhead">Moves (meta)</div>
+              <div style="opacity:.75;font-size:.9rem">Level 1 knows moves up to VG level 5 (Conquest L × 5). DM sets range &amp; opportunity.</div>
+            </div>
+          </div>
+
+          <div class="subhead">Abilities</div>
+          <div class="chip-row" data-abilities="${i}">
+            ${abilityChips || '<span style="opacity:.7">No abilities yet.</span>'}
+            <button class="small-btn" data-action="add-ability" data-idx="${i}">+ Add Ability</button>
+          </div>
+
+          <div class="subhead">Moves</div>
+<div class="moves" data-moves="${i}">
+  ${moveRows || '<span style="opacity:.7">No moves yet.</span>'}
+  <button class="small-btn" data-action="add-move" data-idx="${i}">+ Add Move</button>
+</div>
+
+      `;
+    }
+
+
+    // If user types a decimal (e.g., "6.5") into a base field, assume it's an L1 value and
+    // convert back to a Pokédex base so the level-up math stays correct.
+    function normalizeBaseEntry(statKey, raw) {
+      const str = String(raw ?? "");
+      const n = Number(raw);
+      if (!isFinite(n)) return 0;
+
+      // Decimal → treat as L1 and invert the L1 formula to approximate base
+      if (str.includes(".")) {
+        if (statKey === "hp") {
+          // L1_HP ≈ (round5(base)/10)*4 ≈ (base/10)*4  → base ≈ (L1_HP/4)*10
+          return Math.round((n / 4) * 10);
+        }
+        // Non-HP: L1 ≈ round5(base)/10 ≈ base/10 → base ≈ L1*10
+        return Math.round(n * 10);
+      }
+
+      // Integer → assume it is already a Pokédex base
+      return n;
+    }
+
+    function updateMoveSummary(rowEl, mv) {
+  const nameEl = rowEl.querySelector('[data-sum-name]');
+  const tcEl   = rowEl.querySelector('[data-sum-typecat]');
+  const stEl   = rowEl.querySelector('[data-sum-stats]');
+  if (nameEl) nameEl.textContent = (mv.name && mv.name.trim()) ? mv.name : '(unnamed move)';
+  if (tcEl)   tcEl.textContent   = `${mv.type || '—'} / ${mv.cat || 'physical'}`;
+  if (stEl)   stEl.textContent   = `Pwr ${Math.max(0, mv.power|0)} · Acc ${Math.max(1, Math.min(100, mv.acc|0))}% · R${Math.max(1, mv.range|0)}${mv.opp ? ' · OA' : ''}`;
 }
 
-/** ---- Events ---- */
-function onInput(e) {
-  const card = e.target.closest(".poke-card");
-  if (!card) return;
-  const idx = +card.dataset.idx;
-  const field = e.target.dataset.field;
 
-  if (field === "name") {
-    team[idx].name = e.target.value;
-  } else if (field === "level") {
-    team[idx].level = Math.max(1, Math.min(1000, +e.target.value || 1));
-  } else if (field === "ability") {
-    // ability chip input
-    const chip = e.target.closest(".chip");
-    const ai = +chip.dataset.ability;
-    team[idx].abilities[ai] = e.target.value;
-  } else if (field === "move") {
-    const row = e.target.closest(".move-row");
-    const mi = +row.dataset.move;
-    team[idx].moves[mi] = e.target.value;
+
+    /** ---- Events ---- */
+    function onInput(e) {
+      const card = e.target.closest(".poke-card");
+      if (!card) return;
+      const idx = +card.dataset.idx;
+      const field = e.target.dataset.field;
+
+      if (field === "name") {
+        team[idx].name = e.target.value;
+        markDirty();
+        const nameSpan = card.querySelector('[data-title-name]');
+        if (nameSpan) { const nm = String(e.target.value || "").trim(); nameSpan.textContent = nm ? `— ${nm}` : ""; }
+        return;
+      }
+
+      if (field === "level") {
+        team[idx].level = clamp(+e.target.value || 1, 1, 1000);
+        markDirty();
+        updateStatsInCard(card, team[idx]);
+        return;
+      }
+
+      if (field === "species") {
+        team[idx].species = (e.target.value || "").toLowerCase().trim();
+        const before = { ...team[idx].base };
+        autofillBaseFromSpecies(team[idx]);
+        ['hp', 'atk', 'def', 'spa', 'spd', 'spe'].forEach(k => {
+          if (team[idx].base[k] !== before[k]) {
+            const inp = card.querySelector(`input[data-field="base-${k}"]`);
+            if (inp) inp.value = team[idx].base[k];
+          }
+        });
+        markDirty();
+        updateStatsInCard(card, team[idx]);
+        return;
+      }
+
+      if (field === "types") {
+        team[idx].types = (e.target.value || "")
+          .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+        markDirty();
+        return;
+      }
+
+      if (field === "ability-name") {
+        const chip = e.target.closest(".chip");
+        const ai = +chip.dataset.ability;
+        team[idx].abilities[ai] = team[idx].abilities[ai] || {};
+        team[idx].abilities[ai].name = e.target.value;
+        markDirty();
+        return;
+      }
+
+      if (field === "ability-desc") {
+        const chip = e.target.closest(".chip");
+        const ai = +chip.dataset.ability;
+        team[idx].abilities[ai] = team[idx].abilities[ai] || {};
+        team[idx].abilities[ai].desc = e.target.value;
+        markDirty();
+        return;
+      }
+
+      if (field === "move-name" || field === "move-type" || field === "move-cat" ||
+    field === "move-power" || field === "move-acc" || field === "move-range" ||
+    field === "move-opp" || field === "move-effects") {
+
+  const row = e.target.closest("[data-move]");
+  const mi = +row.dataset.move;
+  team[idx].moves[mi] = team[idx].moves[mi] || {
+    name:"", type:"", cat:"physical", power:0, acc:100, range:1, opp:false, effects:""
+  };
+
+  const mv = team[idx].moves[mi];
+
+  switch (field) {
+    case "move-name":  mv.name  = e.target.value; break;
+    case "move-type":  mv.type  = String(e.target.value || "").toLowerCase(); break;
+    case "move-cat":   mv.cat   = String(e.target.value || "physical").toLowerCase(); break;
+    case "move-power": mv.power = Math.max(0, Math.round(+e.target.value || 0)); e.target.value = mv.power; break;
+    case "move-acc":   mv.acc   = Math.max(1, Math.min(100, Math.round(+e.target.value || 100))); e.target.value = mv.acc; break;
+    case "move-range": mv.range = Math.max(1, Math.round(+e.target.value || 1)); e.target.value = mv.range; break;
+    case "move-opp":   mv.opp   = e.target.checked; break;
+    case "move-effects": mv.effects = e.target.value; break;
   }
+
+  updateMoveSummary(row, mv);  // ← refresh the collapsed line
   markDirty();
-  // Live-update title ("Slot N — Name")
-  if (field === "name") {
-    renderTeam();
-    // try to restore focus
-    const newCard = qsa(".poke-card")[idx];
-    if (newCard) newCard.querySelector('[data-field="name"]').focus();
-  }
+  return;
 }
 
-function onClick(e) {
-  const idxFromBtn = (attr) => +e.target.getAttribute(attr);
-  const card = e.target.closest(".poke-card");
-  const idx = card ? +card.dataset.idx : -1;
+      
 
-  // Remove Pokémon
-  if (e.target.matches('[data-action="remove-mon"]')) {
-    team.splice(idx, 1);
-    renderTeam();
-    markDirty();
-    return;
-  }
-  // Add ability
-  if (e.target.matches('[data-action="add-ability"]')) {
-    const i = idxFromBtn("data-idx");
-    team[i].abilities.push("");
-    renderTeam();
-    markDirty();
-    return;
-  }
-  // Remove ability
-  if (e.target.matches('[data-action="remove-ability"]')) {
-    const chip = e.target.closest(".chip");
-    const i = +chip.dataset.idx;
-    const ai = +chip.dataset.ability;
-    team[i].abilities.splice(ai, 1);
-    renderTeam();
-    markDirty();
-    return;
-  }
-  // Add move
-  if (e.target.matches('[data-action="add-move"]')) {
-    const i = idxFromBtn("data-idx");
-    team[i].moves.push("");
-    renderTeam();
-    markDirty();
-    return;
-  }
-  // Remove move
-  if (e.target.matches('[data-action="remove-move"]')) {
-    const row = e.target.closest(".move-row");
-    const i = +row.dataset.idx;
-    const mi = +row.dataset.move;
-    team[i].moves.splice(mi, 1);
-    renderTeam();
-    markDirty();
-    return;
-  }
-}
+      // and similar for move-power, move-acc, move-range, move-effects, move-opp
 
-/** Toolbar */
-qs("#addMon").addEventListener("click", () => {
-  team.push(blankMon());
-  renderTeam();
-  markDirty();
-});
-qs("#clearTeam").addEventListener("click", () => {
-  if (confirm("Clear this trainer’s entire team?")) {
-    team = [];
-    renderTeam();
-    markDirty();
-  }
-});
-qs("#exportBtn").addEventListener("click", () => {
-  qs("#jsonArea").value = JSON.stringify(team, null, 2);
-});
-qs("#importBtn").addEventListener("click", () => {
+
+      const k = field.split("-")[1]; // hp/atk/def/spa/spd/spe
+      team[idx].base = team[idx].base || {};
+
+      let val = Number(e.target.value);
+      if (!Number.isFinite(val)) val = 0;
+      val = Math.round(val);            // enforce integer
+      val = Math.max(0, Math.min(255, val));
+      team[idx].base[k] = val;
+
+      e.target.value = String(val);     // normalize what the user sees
+
+      markDirty();
+      updateStatsInCard(card, team[idx]);  // live update L1 + Final
+      return;
+
+
+      if (field === "ability-chip") {
+        const chip = e.target.closest(".chip");
+        const ai = +chip.dataset.ability;
+        team[idx].abilities[ai] = e.target.value;
+        markDirty();
+        return;
+      }
+
+      moves: Array.isArray(m.moves)
+        ? m.moves.map(mv => {
+          if (typeof mv === "string") return { name: mv, type: "", cat: "physical", power: 0, acc: 100, range: 1, opp: false, effects: "" };
+          return {
+            name: String(mv?.name || ""),
+            type: String(mv?.type || "").toLowerCase(),
+            cat: String(mv?.cat || "physical").toLowerCase(),
+            power: Number.isFinite(+mv?.power) ? +mv.power : 0,
+            acc: Number.isFinite(+mv?.acc) ? +mv.acc : 100,
+            range: Number.isFinite(+mv?.range) ? +mv.range : 1,
+            opp: !!mv?.opp,
+            effects: String(mv?.effects || "")
+          };
+        })
+        : []
+    }
+
+    function onClick(e) {
+      const card = e.target.closest(".poke-card");
+      const idx = card ? +card.dataset.idx : -1;
+
+      if (e.target.matches('[data-action="remove-mon"]')) {
+        team.splice(idx, 1);
+        renderTeam(); markDirty(); return;
+      }
+      if (e.target.matches('[data-action="add-ability"]')) {
+        team[idx].abilities.push("");
+        renderTeam(); markDirty(); return;
+      }
+      if (e.target.matches('[data-action="remove-ability"]')) {
+        const chip = e.target.closest(".chip");
+        const i = +chip.dataset.idx, ai = +chip.dataset.ability;
+        team[i].abilities.splice(ai, 1);
+        renderTeam(); markDirty(); return;
+      }
+      if (e.target.matches('[data-action="add-move"]')) {
+        team[idx].moves.push("");
+        renderTeam(); markDirty(); return;
+      }
+      if (e.target.matches('[data-action="remove-move"]')) {
+        const row = e.target.closest(".move-row");
+        const i = +row.dataset.idx, mi = +row.dataset.move;
+        team[i].moves.splice(mi, 1);
+        renderTeam(); markDirty(); return;
+      }
+      if (e.target.matches('[data-action="roll-shiny"]')) {
+        const roll = Math.floor(Math.random() * 100) + 1;
+        team[idx].shiny = { rolled: true, roll };
+        renderTeam(); markDirty(); return;
+      }
+    }
+
+    /** ---- Trainer meta (name & picture) ---- */
+    function loadTrainerMeta() { try { return JSON.parse(localStorage.getItem(TRAINER_META_KEY)) || {}; } catch { return {}; } }
+    function saveTrainerMeta(meta) { localStorage.setItem(TRAINER_META_KEY, JSON.stringify(meta || {})); }
+
+    let trainerMeta = loadTrainerMeta();
+
+    function currentTrainerName() {
+      return (trainerMeta.name && trainerMeta.name.trim()) || trainer.name || "Trainer";
+    }
+    function currentPortraitUrl() {
+      return trainerMeta.portraitDataUrl || storedIcon || trainer.portrait || 'assets/players/_placeholder.jpg';
+    }
+
+    // apply header + inputs
+    qs("#trainerName").textContent = currentTrainerName();
+    qs("#trainerThumb").src = currentPortraitUrl();
+
+    const nameInput = qs("#trainerNameInput");
+    if (nameInput) {
+      nameInput.value = currentTrainerName();
+      nameInput.addEventListener("input", () => {
+        trainerMeta.name = nameInput.value;
+        saveTrainerMeta(trainerMeta);
+        qs("#trainerName").textContent = currentTrainerName();
+      });
+    }
+
+    const picInput = qs("#trainerPicFile");
+    if (picInput) {
+      picInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          trainerMeta.portraitDataUrl = reader.result;
+          saveTrainerMeta(trainerMeta);
+          qs("#trainerThumb").src = currentPortraitUrl();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    qs("#resetTrainerMeta")?.addEventListener("click", () => {
+      if (!confirm("Reset trainer name & picture to defaults?")) return;
+      trainerMeta = {};
+      saveTrainerMeta(trainerMeta);
+      if (nameInput) nameInput.value = currentTrainerName();
+      qs("#trainerName").textContent = currentTrainerName();
+      qs("#trainerThumb").src = currentPortraitUrl();
+    });
+
+    /** ---- Export/Import (clean profile JSON in modal) ---- */
+    function buildProfile() {
+      return {
+        format: "sengo-profile-v1",
+        exportedAt: new Date().toISOString(),
+        player: {
+          id: playerId,
+          name: currentTrainerName(),
+          portrait: currentPortraitUrl() // may be data URL (portable)
+        },
+        team: team
+      };
+    }
+
+    function downloadBlob(dataStr, filename, mime = "application/json") {
+      const blob = new Blob([dataStr], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+    }
+    function openJsonModal(title, prefill) {
+      qs("#jsonModalTitle").textContent = title;
+      if (typeof prefill === "string") qs("#jsonArea").value = prefill;
+      const dlg = qs("#jsonModal");
+      if (typeof dlg.showModal === "function") dlg.showModal();
+      else dlg.setAttribute("open", "");
+    }
+
+    // Toolbar buttons
+    qs("#addMon").addEventListener("click", () => { team.push(blankMon()); renderTeam(); markDirty(); });
+    qs("#clearTeam").addEventListener("click", () => {
+      if (confirm("Clear this trainer’s entire team?")) { team = []; renderTeam(); markDirty(); }
+    });
+    qs("#updateStats").addEventListener("click", updateAllStats);
+
+    // Export: show modal (prefilled); no auto-download
+    qs("#profileJsonBtn").addEventListener("click", () => {
+      const json = JSON.stringify(buildProfile(), null, 2);
+      openJsonModal("Profile JSON (export / import)", json);
+    });
+    // Modal actions
+    qs("#jsonFile").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      qs("#jsonArea").value = text;
+    });
+
+    qs("#copyJson").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(qs("#jsonArea").value);
+        alert("Copied!");
+      } catch { alert("Copy failed. Select all and copy manually."); }
+    });
+
+    qs("#downloadJson").addEventListener("click", () => {
+      const text = qs("#jsonArea").value || JSON.stringify(buildProfile(), null, 2);
+      downloadBlob(text, `sengo-profile_${playerId}.json`);
+    });
+
+    qs("#applyImport").addEventListener("click", () => {
   try {
-    const data = JSON.parse(qs("#jsonArea").value || "[]");
-    if (!Array.isArray(data)) throw new Error("Invalid data");
-    // normalize
-    team = data.map(mon => ({
-      name: (mon && mon.name) || "",
-      level: Math.max(1, Math.min(1000, +(mon && mon.level) || 1)),
-      abilities: Array.isArray(mon?.abilities) ? mon.abilities : [],
-      moves: Array.isArray(mon?.moves) ? mon.moves : []
-    }));
-    renderTeam();
-    markDirty();
+    const obj = JSON.parse(qs("#jsonArea").value || "{}");
+    const candidate = Array.isArray(obj)
+      ? { format: "sengo-profile-v1", player: { id: playerId, name: trainer.name }, team: obj }
+      : obj;
+
+    if (!candidate || candidate.format !== "sengo-profile-v1") throw new Error("Invalid or missing format (expected sengo-profile-v1)");
+    if (!Array.isArray(candidate.team)) throw new Error("Missing team array");
+
+    const incomingId   = String(candidate.player?.id || "").trim() || playerId;
+    const incomingName = String(candidate.player?.name || "").trim() || "Trainer";
+    const incomingPortrait = candidate.player?.portrait || null;
+
+    // Different player? Offer to CREATE a new profile instead of merging
+    if (incomingId !== playerId) {
+      const choice = confirm(
+        `This JSON is for player "${incomingId}".\n\n` +
+        `• OK = Create a NEW player with this profile\n` +
+        `• Cancel = Import the team into current player (${playerId})`
+      );
+
+      if (choice) {
+        // Save imported team under its own storage key
+        const normalizedTeam = candidate.team.map(normalizeMon);
+        localStorage.setItem(teamKey(incomingId), JSON.stringify(normalizedTeam));
+
+        // Save trainer meta (name + portrait) for the new player
+        const meta = {};
+        if (incomingName) meta.name = incomingName;
+        if (incomingPortrait) meta.portraitDataUrl = incomingPortrait;
+        localStorage.setItem(trainerMetaKey(incomingId), JSON.stringify(meta));
+
+        // Optional: also put portrait into trainerIcon for session card fallback
+        if (incomingPortrait) localStorage.setItem(trainerIconKey(incomingId), incomingPortrait);
+
+        // Add to the shared roster so the session page shows it
+        ensurePlayerInRoster(incomingId, incomingName, incomingPortrait);
+
+        alert(`Created new player "${incomingId}". Opening their team editor…`);
+        location.href = `team-editor.html?player=${encodeURIComponent(incomingId)}`;
+        return;
+      }
+      // else fall through and import into current player
+    }
+
+    // Same player (or user chose to import into current)
+    team = candidate.team.map(normalizeMon);
+    renderTeam(); markDirty();
+
+    // Optional: adopt imported trainer name/picture for CURRENT player
+    if (candidate.player) {
+      const adopt = confirm("Apply imported trainer name/picture to this profile?");
+      if (adopt) {
+        trainerMeta = trainerMeta || {};
+        if (incomingName) trainerMeta.name = incomingName;
+        if (incomingPortrait) trainerMeta.portraitDataUrl = incomingPortrait;
+        localStorage.setItem(trainerMetaKey(playerId), JSON.stringify(trainerMeta));
+        qs("#trainerName").textContent = (trainerMeta.name || trainer.name || "Trainer");
+        const nameInput = qs("#trainerNameInput"); if (nameInput) nameInput.value = (trainerMeta.name || trainer.name || "Trainer");
+        qs("#trainerThumb").src = trainerMeta.portraitDataUrl || storedIcon || trainer.portrait || 'assets/players/_placeholder.jpg';
+        // keep roster in sync for the current player too
+        ensurePlayerInRoster(playerId, trainerMeta.name || trainer.name, trainerMeta.portraitDataUrl);
+      }
+    }
+
+    alert("Import applied!");
   } catch (err) {
-    alert("Invalid JSON. Please check and try again.");
+    alert("Import failed: " + (err && err.message ? err.message : "Invalid JSON"));
   }
 });
 
-/** Helpers */
-function escapeHtml(s="") {
-  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
 
-/** Init */
-renderTeam();
-qs("#teamGrid").addEventListener("input", onInput);
-qs("#teamGrid").addEventListener("click", onClick);
-markSaved();
-</script>
+    /** Helpers */
+    function escapeHtml(s = "") {
+      return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    /** Init */
+    renderTeam();
+    qs("#teamGrid").addEventListener("input", onInput);
+    qs("#teamGrid").addEventListener("click", onClick);
+    markSaved();
+  </script>
 </body>
+
 </html>
