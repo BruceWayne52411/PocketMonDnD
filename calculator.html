@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pokemon Damage Calculator</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; max-width: 500px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 10px; }
+        label { display: inline-block; width: 150px; }
+        input[type="number"] { width: 60px; }
+        #result { margin-top: 20px; font-size: 1.2em; font-weight: bold; color: #2c3e50; }
+        button { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Pokemon Math Calculator</h2>
+    
+    <div class="input-group">
+        <label>Level:</label> <input type="number" id="lvl" value="50">
+    </div>
+    <div class="input-group">
+        <label>Move Power:</label> <input type="number" id="pwr" value="80">
+    </div>
+    <div class="input-group">
+        <label>Attack Stat:</label> <input type="number" id="atk" value="100">
+    </div>
+    <div class="input-group">
+        <label>Defense Stat:</label> <input type="number" id="def" value="100">
+    </div>
+    <hr>
+    <div class="input-group">
+        <label><input type="checkbox" id="isSE"> Super Effective</label>
+    </div>
+    <div class="input-group">
+        <label><input type="checkbox" id="isNVE"> Not Very Effective</label>
+    </div>
+    <div class="input-group">
+        <label><input type="checkbox" id="isSTAB"> STAB</label>
+    </div>
+    <div class="input-group">
+        <label><input type="checkbox" id="isCrit"> Critical Hit</label>
+    </div>
+    
+    <button onclick="calculateDamage()">Calculate Damage</button>
+
+    <div id="result">Damage: 0</div>
+</div>
+
+<script>
+class PokemonMathShit {
+    level = 1;
+    power = 20;
+    attack = 10;
+    defense = 10;
+    isSuperEffective = false;
+    superEffectiveLevel = 2.0;
+    isNotVeryEffective = false;
+    notVeryEffecctiveLevel = 0.5;
+    isSTAB = false;
+    customSTAB = false;
+    customSTABLevel = 1.5;
+    defaultSTAB = 1.5;
+    isCrit = false;
+
+    // Added "this." references and corrected typos (like notVeryEffecctiveLevel) 
+    // to ensure the class works in a browser environment.
+
+    formulaSESTABNC (level, power, attack, defense, superEffectiveLevel, customSTABLevel) {
+        return level * (power/10) * (attack/defense) * customSTABLevel * superEffectiveLevel;
+    }
+
+    formulaSESTABCrit (level, power, attack, defense, superEffectiveLevel, customSTABLevel) {
+        return (level * (power/10) * (attack/defense) * customSTABLevel * superEffectiveLevel) * 2;
+    }
+
+    formulaSENC (level, power, attack, defense, superEffectiveLevel) {
+        return level * (power/10) * (attack/defense) * superEffectiveLevel;
+    }
+
+    formulaSECrit (level, power, attack, defense, superEffectiveLevel) {
+        return (level * (power/10) * (attack/defense) * superEffectiveLevel) * 2;
+    }
+
+    formulaNVESTABNC (level, power, attack, defense, notVeryEffecctiveLevel, customSTABLevel) {
+        return level * (power/10) * (attack/defense) * customSTABLevel * notVeryEffecctiveLevel;
+    }
+
+    formulaNVESTABCrit (level, power, attack, defense, notVeryEffecctiveLevel, customSTABLevel) {
+        return (level * (power/10) * (attack/defense) * customSTABLevel * notVeryEffecctiveLevel) * 2;
+    }
+
+    formulaNVENC (level, power, attack, defense, notVeryEffecctiveLevel) {
+        return level * (power/10) * (attack/defense) * notVeryEffecctiveLevel;
+    }
+
+    formulaNVECrit (level, power, attack, defense, notVeryEffecctiveLevel) {
+        return (level * (power/10) * (attack/defense) * notVeryEffecctiveLevel) * 2;
+    }
+
+    formulaSTABNC (level, power, attack, defense, customSTABLevel) {
+        return level * (power/10) * (attack/defense) * customSTABLevel;
+    }
+
+    formulaSTABCrit (level, power, attack, defense, customSTABLevel) {
+        return (level * (power/10) * (attack/defense) * customSTABLevel) * 2;
+    }
+
+    formulaBase (level, power, attack, defense) {
+        return level * (power/10) * (attack/defense);
+    }
+
+    formulaBaseCrit (level, power, attack, defense) {
+        return (level * (power/10) * (attack/defense)) * 2;
+    }
+    
+    doMath (level, power, attack, defense, isSuperEffective, superEffectiveLevel, isNotVeryEffective, notVeryEffecctiveLevel, isSTAB, customSTAB, customSTABLevel, isCrit){
+        let result = 0;
+        let defaultSTAB = 1.5;
+
+        if (isCrit){
+            if (isSuperEffective == true && isNotVeryEffective == false){
+                if (isSTAB){
+                    result = this.formulaSESTABCrit(level, power, attack, defense, superEffectiveLevel, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaSECrit(level, power, attack, defense, superEffectiveLevel);
+                }
+            } else if (isSuperEffective == false && isNotVeryEffective == true){
+                if (isSTAB){
+                    result = this.formulaNVESTABCrit(level, power, attack, defense, notVeryEffecctiveLevel, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaNVECrit(level, power, attack, defense, notVeryEffecctiveLevel);
+                }
+            } else {
+                if (isSTAB){
+                    result = this.formulaSTABCrit(level, power, attack, defense, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaBaseCrit(level, power, attack, defense);
+                }
+            }
+        } else {
+            if (isSuperEffective == true && isNotVeryEffective == false){
+                if (isSTAB){
+                    result = this.formulaSESTABNC(level, power, attack, defense, superEffectiveLevel, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaSENC(level, power, attack, defense, superEffectiveLevel);
+                }
+            } else if (isSuperEffective == false && isNotVeryEffective == true){
+                if (isSTAB){
+                    result = this.formulaNVESTABNC(level, power, attack, defense, notVeryEffecctiveLevel, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaNVENC(level, power, attack, defense, notVeryEffecctiveLevel);
+                }
+            } else {
+                if (isSTAB){
+                    result = this.formulaSTABNC(level, power, attack, defense, customSTAB ? customSTABLevel : defaultSTAB);
+                } else {
+                    result = this.formulaBase(level, power, attack, defense);
+                }
+            }
+        }
+        return result;
+    }
+}
+
+const pokeCalc = new PokemonMathShit();
+
+function calculateDamage() {
+    const l = parseFloat(document.getElementById('lvl').value);
+    const p = parseFloat(document.getElementById('pwr').value);
+    const a = parseFloat(document.getElementById('atk').value);
+    const d = parseFloat(document.getElementById('def').value);
+    const se = document.getElementById('isSE').checked;
+    const nve = document.getElementById('isNVE').checked;
+    const stab = document.getElementById('isSTAB').checked;
+    const crit = document.getElementById('isCrit').checked;
+
+    const damage = pokeCalc.doMath(l, p, a, d, se, 2.0, nve, 0.5, stab, false, 1.5, crit);
+    
+    document.getElementById('result').innerText = "Damage: " + Math.floor(damage);
+}
+</script>
+
+</body>
+</html>
